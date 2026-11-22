@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<!-- [P] Lava Push's WebGL template: the canvas fills a phone and is a centred 9:16 column on a wide screen. The loading bar always
+     moves (time eases it toward 92 %, the real download pushes it on) and fills only when the game is ready. WebBuild selects it. -->
+<html lang="id">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#7a1408">
+    <link rel="icon" href="data:,">
+    <title>Lava Push</title>
+    <style>
+      @font-face { font-family: "Lilita One"; src: url("TemplateData/LilitaOne.ttf") format("truetype"); font-display: block; }
+      html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #2a0d08; touch-action: none;
+        -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+      #game { position: fixed; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
+        height: 100vh; height: 100dvh; width: 100vw; max-width: calc(100dvh * 9 / 16); overflow: hidden; }
+      @supports not (height: 100dvh) { #game { max-width: calc(100vh * 9 / 16); } }
+      #unity-canvas { display: block; width: 100%; height: 100%; background: #7a1408; outline: none; }
+      #loading { position: absolute; inset: 0; background: radial-gradient(circle at 50% 62%, #ff9a2e 0, #e8431a 34%, #8e1a0b 72%, #5c0f07 100%);
+        transition: opacity .25s ease-out; }
+      #name { position: absolute; left: 0; right: 0; top: 27%; text-align: center; font: 400 8.4vh/0.95 "Lilita One", system-ui, sans-serif; color: #fff;
+        -webkit-text-stroke: 1.1vh #4a0c05; paint-order: stroke fill; letter-spacing: .02em; }
+      #bar { position: absolute; left: 14.81%; right: 14.81%; bottom: 11.46%; height: 3.08%; border-radius: 999px;
+        background: linear-gradient(#fff, #ffe6d2); box-shadow: 0 .55vh 0 #4a0c05, 0 1.2vh 1.6vh rgba(30, 5, 0, .35); }
+      #fill { position: absolute; left: 1.6%; top: 16.7%; bottom: 16.7%; width: 0; min-width: 6%; border-radius: 999px;
+        background: linear-gradient(#ffd23a, #ff7a0a); box-shadow: inset 0 .35vh .4vh rgba(255, 255, 255, .55); }
+      #label { position: absolute; left: 0; right: 0; bottom: 6%; height: 4.5%; display: flex; align-items: center; justify-content: center;
+        font: 400 3vh "Lilita One", system-ui, sans-serif; color: #fff; letter-spacing: .05em; -webkit-text-stroke: .45vh #4a0c05; paint-order: stroke fill; }
+      #error { position: absolute; left: 12px; right: 12px; bottom: 12px; padding: 10px; border-radius: 8px;
+        background: #b3261e; color: #fff; font: 14px system-ui, sans-serif; display: none; z-index: 2; }
+    </style>
+  </head>
+  <body>
+    <div id="game">
+      <canvas id="unity-canvas" tabindex="-1"></canvas>
+      <div id="loading"><div id="name">LAVA<br>PUSH</div><div id="bar"><div id="fill"></div></div><div id="label">LOADING...</div></div>
+      <div id="error"></div>
+    </div>
+    <script>
+      var canvas = document.querySelector("#unity-canvas");
+      var loadingEl = document.querySelector("#loading"), fillEl = document.querySelector("#fill");
+      function showBanner(msg, type) {
+        if (type != 'error') { console.warn(msg); return; }
+        var e = document.querySelector("#error"); e.textContent = msg; e.style.display = 'block';
+      }
+      var real = 0, shown = 0, ready = false, t0 = performance.now();
+      function tick(now) {
+        var t = (now - t0) / 1000;
+        var goal = ready ? 1 : Math.max(0.92 * (1 - Math.exp(-t / 6)), 0.92 * real);
+        shown += (goal - shown) * (ready ? 0.18 : 0.05);
+        fillEl.style.width = (96.8 * shown) + "%";
+        if (ready && shown > 0.995) {
+          fillEl.style.width = "96.8%";
+          setTimeout(function () { loadingEl.style.opacity = 0; setTimeout(function () { loadingEl.remove(); }, 300); }, 120);
+          return;
+        }
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+      var buildUrl = "Build";
+      var config = {
+        arguments: [],
+        dataUrl: buildUrl + "/WebGL.data.unityweb",
+        frameworkUrl: buildUrl + "/WebGL.framework.js.unityweb",
+        codeUrl: buildUrl + "/WebGL.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "IF Play",
+        productName: "Lava Push",
+        productVersion: "0.1.0",
+        // a phone's 3x screen would triple the pixels the GPU has to fill for little visible gain
+        devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+        showBanner: showBanner,
+      };
+      var script = document.createElement("script");
+      script.src = buildUrl + "/WebGL.loader.js";
+      script.onload = function () {
+        createUnityInstance(canvas, config, function (p) { real = Math.max(real, p); })
+          .then(function () { ready = true; })
+          .catch(function (message) { showBanner(String(message), 'error'); });
+      };
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>
