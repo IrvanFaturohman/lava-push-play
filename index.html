@@ -1,12 +1,15 @@
 <!DOCTYPE html>
-<!-- [P] Lava Push's WebGL template: the canvas fills a phone and is a centred 9:16 column on a wide screen. The loading bar always
-     moves (time eases it toward 92 %, the real download pushes it on) and fills only when the game is ready. WebBuild selects it. -->
+<!-- [P] Lava Push's WebGL template: the canvas fills a phone and is a centred 9:16 column on a wide screen. The loading screen is the
+     Android one (BootLoader.cs, Figma "Loading Final - Red"): same art, logo, bar and 1080 x 1920 layout. The bar always moves (time eases
+     it toward 92 %, the real download pushes it on) and fills only when the game is ready. WebBuild selects this template. -->
 <html lang="id">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#7a1408">
     <link rel="icon" href="data:,">
+    <link rel="preload" as="image" href="TemplateData/loading_art.webp">
+    <link rel="preload" as="image" href="TemplateData/loading_logo.webp">
     <title>Lava Push</title>
     <style>
       @font-face { font-family: "Lilita One"; src: url("TemplateData/LilitaOne.ttf") format("truetype"); font-display: block; }
@@ -16,16 +19,26 @@
         height: 100vh; height: 100dvh; width: 100vw; max-width: calc(100dvh * 9 / 16); overflow: hidden; }
       @supports not (height: 100dvh) { #game { max-width: calc(100vh * 9 / 16); } }
       #unity-canvas { display: block; width: 100%; height: 100%; background: #7a1408; outline: none; }
-      #loading { position: absolute; inset: 0; background: radial-gradient(circle at 50% 62%, #ff9a2e 0, #e8431a 34%, #8e1a0b 72%, #5c0f07 100%);
-        transition: opacity .25s ease-out; }
-      #name { position: absolute; left: 0; right: 0; top: 27%; text-align: center; font: 400 8.4vh/0.95 "Lilita One", system-ui, sans-serif; color: #fff;
-        -webkit-text-stroke: 1.1vh #4a0c05; paint-order: stroke fill; letter-spacing: .02em; }
-      #bar { position: absolute; left: 14.81%; right: 14.81%; bottom: 11.46%; height: 3.08%; border-radius: 999px;
-        background: linear-gradient(#fff, #ffe6d2); box-shadow: 0 .55vh 0 #4a0c05, 0 1.2vh 1.6vh rgba(30, 5, 0, .35); }
-      #fill { position: absolute; left: 1.6%; top: 16.7%; bottom: 16.7%; width: 0; min-width: 6%; border-radius: 999px;
-        background: linear-gradient(#ffd23a, #ff7a0a); box-shadow: inset 0 .35vh .4vh rgba(255, 255, 255, .55); }
-      #label { position: absolute; left: 0; right: 0; bottom: 6%; height: 4.5%; display: flex; align-items: center; justify-content: center;
-        font: 400 3vh "Lilita One", system-ui, sans-serif; color: #fff; letter-spacing: .05em; -webkit-text-stroke: .45vh #4a0c05; paint-order: stroke fill; }
+      /* above and below the art on tall phones: the art's own edge colours */
+      #loading { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(#40032a 50%, #7e021a 50%); transition: opacity .25s ease-out; }
+      #art { position: absolute; left: 0; top: 50%; width: 100%; aspect-ratio: 9 / 16; transform: translateY(-50%); display: block; }
+      #design { position: absolute; left: 50%; top: 50%; width: 1080px; height: 1920px; transform: translate(-50%, -50%) scale(var(--k, .3)); }
+      #design > * { position: absolute; }
+      #logo { left: 180px; top: 76px; width: 720px; height: auto; }
+      .txt { font-family: "Lilita One", system-ui, sans-serif; font-weight: 400; color: #fff; white-space: nowrap;
+        -webkit-text-stroke: 11px #4a0c05; paint-order: stroke fill; }
+      #label { left: 280px; top: 1640px; width: 520px; height: 66px; line-height: 66px; font-size: 54px; text-align: center; }
+      #version { left: 60px; top: 1838px; width: 300px; height: 50px; line-height: 50px; font-size: 36px; -webkit-text-stroke-width: 8px; }
+      #studio { left: 720px; top: 1838px; width: 300px; height: 50px; line-height: 50px; font-size: 40px; text-align: right; -webkit-text-stroke-width: 8px; }
+      #shadow { left: 280px; top: 1731px; width: 520px; height: 76px; border-radius: 38px; background: #2a0502; }
+      #bar { left: 280px; top: 1722px; width: 520px; height: 76px; box-sizing: border-box; border-style: solid; border-width: 0 38px;
+        border-image: url("TemplateData/loading_frame.png") 0 76 fill / 0 38px / 0 stretch; }
+      #track { left: 294px; top: 1736px; width: 492px; height: 48px; border-radius: 24px; background: #7a1408; overflow: hidden; }
+      #fill { position: absolute; left: 0; top: 0; width: 48px; height: 48px; border-radius: 24px; overflow: hidden; }
+      #fillBg { position: absolute; inset: 0; box-sizing: border-box; border-style: solid; border-width: 24px;
+        border-image: url("TemplateData/loading_fill.png") 48 fill / 24px / 0 stretch; }
+      #stripes { position: absolute; inset: 0; background: url("TemplateData/loading_stripes.png") repeat-x 0 0 / 56px 48px; animation: stripes 1.11s linear infinite; }
+      @keyframes stripes { to { background-position-x: 56px; } }
       #error { position: absolute; left: 12px; right: 12px; bottom: 12px; padding: 10px; border-radius: 8px;
         background: #b3261e; color: #fff; font: 14px system-ui, sans-serif; display: none; z-index: 2; }
     </style>
@@ -33,12 +46,30 @@
   <body>
     <div id="game">
       <canvas id="unity-canvas" tabindex="-1"></canvas>
-      <div id="loading"><div id="name">LAVA<br>PUSH</div><div id="bar"><div id="fill"></div></div><div id="label">LOADING...</div></div>
+      <div id="loading">
+        <img id="art" src="TemplateData/loading_art.webp" alt="" decoding="sync">
+        <div id="design">
+          <img id="logo" src="TemplateData/loading_logo.webp" alt="Lava Push" decoding="sync">
+          <div id="label" class="txt">LOADING...</div>
+          <div id="shadow"></div>
+          <div id="bar"></div>
+          <div id="track"><div id="fill"><div id="fillBg"></div><div id="stripes"></div></div></div>
+          <div id="version" class="txt">0.1.0</div>
+          <div id="studio" class="txt">IF Play</div>
+        </div>
+      </div>
       <div id="error"></div>
     </div>
     <script>
       var canvas = document.querySelector("#unity-canvas");
-      var loadingEl = document.querySelector("#loading"), fillEl = document.querySelector("#fill");
+      var loadingEl = document.querySelector("#loading"), fillEl = document.querySelector("#fill"), designEl = document.querySelector("#design");
+      var FILL_MIN = 48, TRACK_W = 492;
+      function fitLoading() {
+        if (!loadingEl.isConnected) return;
+        designEl.style.setProperty("--k", Math.min(loadingEl.clientWidth / 1080, loadingEl.clientHeight / 1920));
+      }
+      fitLoading();
+      window.addEventListener("resize", fitLoading);
       function showBanner(msg, type) {
         if (type != 'error') { console.warn(msg); return; }
         var e = document.querySelector("#error"); e.textContent = msg; e.style.display = 'block';
@@ -48,9 +79,9 @@
         var t = (now - t0) / 1000;
         var goal = ready ? 1 : Math.max(0.92 * (1 - Math.exp(-t / 6)), 0.92 * real);
         shown += (goal - shown) * (ready ? 0.18 : 0.05);
-        fillEl.style.width = (96.8 * shown) + "%";
+        fillEl.style.width = (FILL_MIN + (TRACK_W - FILL_MIN) * shown) + "px";
         if (ready && shown > 0.995) {
-          fillEl.style.width = "96.8%";
+          fillEl.style.width = TRACK_W + "px";
           setTimeout(function () { loadingEl.style.opacity = 0; setTimeout(function () { loadingEl.remove(); }, 300); }, 120);
           return;
         }
